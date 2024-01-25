@@ -301,7 +301,7 @@ ns_set_background_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
   struct face *face;
   NSColor *col;
   NSView *view = FRAME_NS_VIEW (f);
-  EmacsCGFloat alpha;
+  EmacsCGFloat alpha = f->alpha_background;
 
   block_input ();
   if (ns_lisp_to_color (arg, &col))
@@ -316,11 +316,10 @@ ns_set_background_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
   f->output_data.ns->background_color = col;
 
   FRAME_BACKGROUND_PIXEL (f) = [col unsignedLong];
-  alpha = [col alphaComponent];
 
   if (view != nil)
     {
-      [[view window] setBackgroundColor: col];
+      [[view window] setBackgroundColor: [col colorWithAlphaComponent: alpha]];
 
       if (alpha != (EmacsCGFloat) 1.0)
           [[view window] setOpaque: NO];
@@ -330,10 +329,7 @@ ns_set_background_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
       face = FRAME_DEFAULT_FACE (f);
       if (face)
         {
-          col = [NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)];
-          face->background = [[col colorWithAlphaComponent: alpha]
-                               unsignedLong];
-
+          face->background = [col unsignedLong];
           update_face_from_frame_parameter (f, Qbackground_color, arg);
         }
 
@@ -346,6 +342,36 @@ ns_set_background_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
   unblock_input ();
 }
 
+static void
+ns_set_alpha_background (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
+{
+  NSView *view = FRAME_NS_VIEW (f);
+  double alpha = 1.0;
+
+  if (NILP (arg))
+    alpha = 1.0;
+  else if (FLOATP (arg))
+    {
+      alpha = XFLOAT_DATA (arg);
+      if (! (0 <= alpha && alpha <= 1.0))
+	args_out_of_range (make_float (0.0), make_float (1.0));
+    }
+  else if (FIXNUMP (arg))
+    {
+      EMACS_INT ialpha = XFIXNUM (arg);
+      if (! (0 <= ialpha && ialpha <= 100))
+	args_out_of_range (make_fixnum (0), make_fixnum (100));
+      alpha = ialpha / 100.0;
+    }
+  else
+    wrong_type_argument (Qnumberp, arg);
+
+  f->alpha_background = alpha;
+  [[view window] setBackgroundColor: [f->output_data.ns->background_color
+					 colorWithAlphaComponent: alpha]];
+  recompute_basic_faces (f);
+  SET_FRAME_GARBAGED (f);
+}
 
 static void
 ns_set_cursor_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
@@ -1065,7 +1091,7 @@ frame_parm_handler ns_frame_parm_handlers[] =
   ns_set_z_group,
   0, /* x_set_override_redirect */
   gui_set_no_special_glyphs,
-  gui_set_alpha_background,
+  ns_set_alpha_background,
   NULL,
 #ifdef NS_IMPL_COCOA
   ns_set_appearance,
