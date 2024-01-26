@@ -2803,7 +2803,8 @@ ns_after_update_window_line (struct window *w, struct glyph_row *desired_row)
           NSRect r = NSMakeRect (0, y, FRAME_PIXEL_WIDTH (f), height);
           ns_focus (f, &r, 1);
 
-          [[[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)] colorWithAlphaComponent: f->alpha_background] set];
+          [[[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)]
+	     colorWithAlphaComponent: f->alpha_background] set];
           NSRectFill (NSMakeRect (0, y, width, height));
           NSRectFill (NSMakeRect (FRAME_PIXEL_WIDTH (f) - width,
                                   y, width, height));
@@ -2967,7 +2968,8 @@ ns_draw_fringe_bitmap (struct window *w, struct glyph_row *row,
   if (! NSIsEmptyRect (clearRect))
     {
       NSTRACE_RECT ("clearRect", clearRect);
-      [[[NSColor colorWithUnsignedLong:face->background] colorWithAlphaComponent: f->alpha_background] set];
+      [[[NSColor colorWithUnsignedLong:face->background]
+	 colorWithAlphaComponent: f->alpha_background] set];
       NSRectFill (clearRect);
     }
 
@@ -3719,7 +3721,8 @@ ns_dumpglyphs_box_or_relief (struct glyph_string *s)
   if (s->face->box == FACE_SIMPLE_BOX && s->face->box_color)
     {
       ns_draw_box (r, abs (hthickness), abs (vthickness),
-                   [[NSColor colorWithUnsignedLong:face->box_color] colorWithAlphaComponent: s->f->alpha_background],
+                   [[NSColor colorWithUnsignedLong:face->box_color]
+		     colorWithAlphaComponent: s->f->alpha_background],
                    left_p, right_p);
     }
   else
@@ -3904,7 +3907,8 @@ ns_dumpglyphs_image (struct glyph_string *s, NSRect r)
      otherwise, since we composite the image under NS (instead of mucking
      with its background color), we must clear just the image area.  */
 
-  [[[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)] colorWithAlphaComponent: s->f->alpha_background] set];
+  [[[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)]
+     colorWithAlphaComponent: s->f->alpha_background] set];
 
   if (bg_height > s->slice.height || s->img->hmargin || s->img->vmargin
       || s->img->mask || s->img->pixmap == 0 || s->width != s->background_width)
@@ -3974,7 +3978,8 @@ ns_dumpglyphs_image (struct glyph_string *s, NSRect r)
   if (s->hl == DRAW_CURSOR)
     {
       [FRAME_CURSOR_COLOR (s->f) set];
-      tdCol = [[NSColor colorWithUnsignedLong: NS_FACE_BACKGROUND (face)] colorWithAlphaComponent: s->f->alpha_background];
+      tdCol = [[NSColor colorWithUnsignedLong: NS_FACE_BACKGROUND (face)]
+		colorWithAlphaComponent: s->f->alpha_background];
     }
   else
     tdCol = [NSColor colorWithUnsignedLong: NS_FACE_FOREGROUND (face)];
@@ -4068,10 +4073,12 @@ ns_draw_stretch_glyph_string (struct glyph_string *s)
 		face = FACE_FROM_ID (s->f, MOUSE_FACE_ID);
 	      prepare_face_for_display (s->f, face);
 
-	      [[[NSColor colorWithUnsignedLong: face->background] colorWithAlphaComponent: s->f->alpha_background] set];
+	      [[[NSColor colorWithUnsignedLong: face->background]
+		 colorWithAlphaComponent: s->f->alpha_background] set];
 	    }
 	  else
-	    [[[NSColor colorWithUnsignedLong: s->face->background] colorWithAlphaComponent: s->f->alpha_background] set];
+	    [[[NSColor colorWithUnsignedLong: s->face->background]
+	       colorWithAlphaComponent: s->f->alpha_background] set];
 	  NSRectFill (NSMakeRect (x, y, w, h));
 	}
     }
@@ -4097,7 +4104,8 @@ ns_draw_stretch_glyph_string (struct glyph_string *s)
 	  if (s->hl == DRAW_CURSOR)
 	    [FRAME_CURSOR_COLOR (s->f) set];
 	  else
-	    [[[NSColor colorWithUnsignedLong: s->face->background] colorWithAlphaComponent: s->f->alpha_background] set];
+	    [[[NSColor colorWithUnsignedLong: s->face->background]
+	       colorWithAlphaComponent: s->f->alpha_background] set];
 
 	  NSRectFill (NSMakeRect (x, s->y, background_width, s->height));
 	}
@@ -8438,7 +8446,8 @@ ns_in_echo_area (void)
         }
 
       [w setContentView:[fw contentView]];
-      [w setBackgroundColor: [col colorWithAlphaComponent: f->alpha_background]];
+      [w setBackgroundColor: [col colorWithAlphaComponent:
+				    f->alpha_background]];
       if (f->alpha_background != (EmacsCGFloat) 1.0)
         [w setOpaque: NO];
 
@@ -9175,7 +9184,8 @@ ns_in_echo_area (void)
 
       col = [NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND
 		      (FACE_FROM_ID (f, DEFAULT_FACE_ID))];
-      [self setBackgroundColor:[col colorWithAlphaComponent:f->alpha_background]];
+      [self setBackgroundColor:
+	      [col colorWithAlphaComponent:f->alpha_background]];
       if (f->alpha_background != (EmacsCGFloat) 1.0)
         [self setOpaque:NO];
 
