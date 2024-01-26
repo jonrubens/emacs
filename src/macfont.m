@@ -2953,14 +2953,14 @@ macfont_draw (struct glyph_string *s, int from, int to, int x, int y,
             CG_SET_FILL_COLOR_WITH_FACE_FOREGROUND (context, face);
           else
             CG_SET_FILL_COLOR_WITH_FRAME_CURSOR (context, f);
-	  CGContextSetAlpha(context, 1);
+	  CGContextSetAlpha (context, 1);
 	}
       else
 	{
-	  CGContextSetAlpha(context, f->alpha_background);
+	  CGContextSetAlpha (context, f->alpha_background);
 	  CG_SET_FILL_COLOR_WITH_FACE_BACKGROUND (context, face);
 	}
-      CGContextClearRect(context, background_rect);
+      CGContextClearRect (context, background_rect);
       CGContextFillRects (context, &background_rect, 1);
     }
 
@@ -2969,7 +2969,7 @@ macfont_draw (struct glyph_string *s, int from, int to, int x, int y,
       CGAffineTransform atfm;
 
       CGContextScaleCTM (context, 1, -1);
-      CGContextSetAlpha(context, 1);
+      CGContextSetAlpha (context, 1);
       if (s->hl == DRAW_CURSOR)
         {
           if (face && (NS_FACE_BACKGROUND (face)
