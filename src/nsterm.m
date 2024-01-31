@@ -2648,9 +2648,11 @@ ns_clear_frame_area (struct frame *f, int x, int y, int width, int height)
 
   r = NSIntersectionRect (r, [view frame]);
   ns_focus (f, &r, 1);
-  [[[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)] colorWithAlphaComponent: f->alpha_background] set];
+  [[[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)]
+     colorWithAlphaComponent: f->alpha_background] set];
 
   NSRectFill (r);
+  [[view window] invalidateShadow];
 
   ns_unfocus (f);
   return;
@@ -2752,7 +2754,8 @@ ns_clear_under_internal_border (struct frame *f)
         return;
 
       ns_focus (f, NULL, 1);
-      [[[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)] colorWithAlphaComponent: f->alpha_background] set];
+      [[[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)]
+	 colorWithAlphaComponent: f->alpha_background] set];
       NSRectFill (NSMakeRect (0, margin, width, border));
       NSRectFill (NSMakeRect (0, 0, border, height));
       NSRectFill (NSMakeRect (0, margin, width, border));
@@ -4106,7 +4109,6 @@ ns_draw_stretch_glyph_string (struct glyph_string *s)
 	  else
 	    [[[NSColor colorWithUnsignedLong: s->face->background]
 	       colorWithAlphaComponent: s->f->alpha_background] set];
-
 	  NSRectFill (NSMakeRect (x, s->y, background_width, s->height));
 	}
     }
