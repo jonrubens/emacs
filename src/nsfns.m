@@ -361,9 +361,13 @@ ns_set_alpha_background (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
   else
     wrong_type_argument (Qnumberp, arg);
 
-  f->alpha_background = alpha;
+  /* The background is made up of a base layer and then an identical layer on
+     top. In order to have the resultant "alpha_background" component match the
+     transparency of the "alpha" frame parameter at the same value, we need to
+     use a modified value for alpha_background. */
+  f->alpha_background = (1 - sqrt(1 - alpha));
   [[view window] setBackgroundColor: [f->output_data.ns->background_color
-					 colorWithAlphaComponent: alpha]];
+					 colorWithAlphaComponent: f->alpha_background]];
 
   if (alpha != (EmacsCGFloat) 1.0)
     [[view window] setOpaque: NO];
