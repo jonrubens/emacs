@@ -321,11 +321,6 @@ ns_set_background_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
     {
       [[view window] setBackgroundColor: [col colorWithAlphaComponent: alpha]];
 
-      if (alpha != (EmacsCGFloat) 1.0)
-          [[view window] setOpaque: NO];
-      else
-          [[view window] setOpaque: YES];
-
       face = FRAME_DEFAULT_FACE (f);
       if (face)
         {
@@ -369,6 +364,12 @@ ns_set_alpha_background (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
   f->alpha_background = alpha;
   [[view window] setBackgroundColor: [f->output_data.ns->background_color
 					 colorWithAlphaComponent: alpha]];
+
+  if (alpha != (EmacsCGFloat) 1.0)
+    [[view window] setOpaque: NO];
+  else
+    [[view window] setOpaque: YES];
+
   recompute_basic_faces (f);
   SET_FRAME_GARBAGED (f);
 }
