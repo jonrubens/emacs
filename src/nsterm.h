@@ -997,6 +997,10 @@ struct ns_output
   /* The height of the titlebar decoration (included in NSWindow's frame).  */
   int titlebar_height;
 
+  /* True if the titlebar container has been given a translucent
+     background color for `alpha-background'.  */
+  bool titlebar_tinted;
+
   /* The height of the toolbar if displayed, else 0.  */
   int toolbar_height;
 
@@ -1222,6 +1226,11 @@ extern size_t ns_image_size_in_bytes (void *img);
 
 /* Defined in nsterm.m.  */
 extern float ns_antialias_threshold;
+#ifdef __OBJC__
+extern NSColor *ns_apply_alpha_background (struct frame *, NSColor *);
+extern void ns_set_window_background (struct frame *, NSWindow *, NSColor *);
+#endif
+extern void ns_set_background_fill_color (struct frame *, unsigned long);
 extern void ns_make_frame_visible (struct frame *f);
 extern void ns_make_frame_invisible (struct frame *f);
 extern void ns_iconify_frame (struct frame *f);

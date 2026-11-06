@@ -207,6 +207,115 @@ nstrace_fullscreen_type_name (int fs_type)
 
 /* ==========================================================================
 
+   Frame background transparency (the `alpha-background' frame parameter).
+
+   Like the other GUI terminals, NS applies `alpha-background' only to
+   background fills: face backgrounds, the frame background and, if
+   `borders-respect-alpha-background' is non-nil, internal borders.
+   Text, the cursor and other foreground elements stay opaque.
+
+   All background fills are done with NSRectFill, which uses the Copy
+   compositing operator.  The pixels in the frame's layer therefore
+   *replace* what was there, and the translucent result is composited
+   against the desktop exactly once.  For this to work the NSWindow
+   itself must not paint a translucent background of its own (see
+   ns_set_window_background), otherwise the background would be blended
+   twice and look darker than requested.
+
+   ========================================================================== */
+
+/* Return COL with F's `alpha-background' folded into its alpha.  */
+NSColor *
+ns_apply_alpha_background (struct frame *f, NSColor *col)
+{
+  double alpha = f->alpha_background;
+
+  if (alpha >= 1.0)
+    return col;
+  return [col colorWithAlphaComponent: [col alphaComponent] * alpha];
+}
+
+/* Make the pixel value PIXEL (ARGB) the current drawing color, honoring
+   F's `alpha-background'.  */
+void
+ns_set_background_fill_color (struct frame *f, unsigned long pixel)
+{
+  [ns_apply_alpha_background (f, [NSColor colorWithUnsignedLong: pixel]) set];
+}
+
+/* Like ns_set_background_fill_color, but for internal borders, which
+   only become translucent if `borders-respect-alpha-background' is set.  */
+static void
+ns_set_border_fill_color (struct frame *f, unsigned long pixel)
+{
+  if (f->borders_respect_alpha_background)
+    ns_set_background_fill_color (f, pixel);
+  else
+    [[NSColor colorWithUnsignedLong: pixel] set];
+}
+
+#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+/* With `ns-transparent-titlebar' the titlebar shows the window's
+   background, which we make clear when `alpha-background' is in effect
+   (see below), so the titlebar would be see-through with no tint at
+   all.  Give the titlebar container the translucent background color
+   instead, so that it matches the rest of the frame.  */
+static void
+ns_set_titlebar_tint (struct frame *f, NSWindow *window, NSColor *col)
+{
+  NSView *container = [[[window standardWindowButton: NSWindowCloseButton]
+                         superview] superview];
+  bool tint = (f->alpha_background < 1.0
+               && FRAME_NS_TRANSPARENT_TITLEBAR (f)
+               && col != nil);
+
+  if (container == nil)
+    return;
+
+  if (tint)
+    {
+      [container setWantsLayer: YES];
+      [[container layer]
+        setBackgroundColor: [ns_apply_alpha_background (f, col) CGColor]];
+      f->output_data.ns->titlebar_tinted = true;
+    }
+  else if (f->output_data.ns->titlebar_tinted)
+    {
+      [[container layer] setBackgroundColor: NULL];
+      f->output_data.ns->titlebar_tinted = false;
+    }
+}
+#endif
+
+/* Configure WINDOW, which belongs to F, so that its translucency matches
+   COL (the frame's background color) and F's `alpha-background'.
+
+   When `alpha-background' is in effect, the window background must be
+   fully clear: the translucent background is drawn by Emacs into the
+   frame's view, and a translucent window background underneath it
+   would be composited a second time.  */
+void
+ns_set_window_background (struct frame *f, NSWindow *window, NSColor *col)
+{
+  if (f->alpha_background < 1.0)
+    {
+      [window setBackgroundColor: [NSColor clearColor]];
+      [window setOpaque: NO];
+    }
+  else
+    {
+      [window setBackgroundColor: col];
+      [window setOpaque: [col alphaComponent] == (EmacsCGFloat) 1.0];
+    }
+
+#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+  ns_set_titlebar_tint (f, window, col);
+#endif
+}
+
+
+/* ==========================================================================
+
     Local declarations
 
    ========================================================================== */
@@ -2160,6 +2269,9 @@ ns_set_transparent_titlebar (struct frame *f, Lisp_Object new_value,
     {
       window.titlebarAppearsTransparent = !NILP (new_value);
       FRAME_NS_TRANSPARENT_TITLEBAR (f) = !NILP (new_value);
+      if (f->output_data.ns->background_color != nil)
+        ns_set_window_background (f, window,
+                                  f->output_data.ns->background_color);
     }
 #endif /* MAC_OS_X_VERSION_MAX_ALLOWED >= 101000 */
 }
@@ -2808,8 +2920,8 @@ ns_clear_frame (struct frame *f)
 
   block_input ();
   ns_focus (f, &r, 1);
-  [[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND
-			    (FACE_FROM_ID (f, DEFAULT_FACE_ID))] set];
+  ns_set_background_fill_color (f, NS_FACE_BACKGROUND
+				(FACE_FROM_ID (f, DEFAULT_FACE_ID)));
   NSRectFill (r);
   ns_unfocus (f);
 
@@ -2837,7 +2949,7 @@ ns_clear_frame_area (struct frame *f, int x, int y, int width, int height)
 
   r = NSIntersectionRect (r, [view frame]);
   ns_focus (f, &r, 1);
-  [[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)] set];
+  ns_set_background_fill_color (f, NS_FACE_BACKGROUND (face));
 
   NSRectFill (r);
 
@@ -2941,7 +3053,7 @@ ns_clear_under_internal_border (struct frame *f)
         return;
 
       ns_focus (f, NULL, 1);
-      [[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)] set];
+      ns_set_border_fill_color (f, NS_FACE_BACKGROUND (face));
       NSRectFill (NSMakeRect (0, margin, width, border));
       NSRectFill (NSMakeRect (0, 0, border, height));
       NSRectFill (NSMakeRect (0, margin, width, border));
@@ -2993,7 +3105,7 @@ ns_after_update_window_line (struct window *w, struct glyph_row *desired_row)
           NSRect r = NSMakeRect (0, y, FRAME_PIXEL_WIDTH (f), height);
           ns_focus (f, &r, 1);
 
-          [[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)] set];
+          ns_set_border_fill_color (f, NS_FACE_BACKGROUND (face));
           NSRectFill (NSMakeRect (0, y, width, height));
           NSRectFill (NSMakeRect (FRAME_PIXEL_WIDTH (f) - width,
                                   y, width, height));
@@ -3244,7 +3356,7 @@ ns_draw_fringe_bitmap (struct window *w, struct glyph_row *row,
     {
       NSTRACE_RECT ("clearRect", bmpRect);
 
-      [[NSColor colorWithUnsignedLong:face->background] set];
+      ns_set_background_fill_color (f, face->background);
       NSRectFill (bmpRect);
     }
 
@@ -4069,8 +4181,19 @@ ns_dumpglyphs_box_or_relief (struct glyph_string *s)
   /* TODO: Sometimes box_color is 0 and this seems wrong; should investigate.  */
   if (s->face->box == FACE_SIMPLE_BOX && s->face->box_color)
     {
-      ns_draw_box (r, abs (hthickness), abs (vthickness),
-                   [NSColor colorWithUnsignedLong:face->box_color],
+      NSColor *box_col = [NSColor colorWithUnsignedLong:face->box_color];
+      struct face *default_face = FRAME_DEFAULT_FACE (s->f);
+
+      /* A box drawn in a background color (as is commonly done to pad
+         or space out things like tab-bar tabs) is part of the
+         background, so make it follow `alpha-background' too.  Boxes
+         in any other color remain opaque, like text.  */
+      if (face->box_color == NS_FACE_BACKGROUND (face)
+          || (default_face
+              && face->box_color == NS_FACE_BACKGROUND (default_face)))
+        box_col = ns_apply_alpha_background (s->f, box_col);
+
+      ns_draw_box (r, abs (hthickness), abs (vthickness), box_col,
                    left_p, right_p);
     }
   else
@@ -4103,7 +4226,7 @@ ns_maybe_dumpglyphs_background (struct glyph_string *s, char force_p)
 #ifdef NS_IMPL_COCOA
 	  /* On cocoa emacs the stipple is stored as a mask CGImage.
 	     First we want to clear the background with the bg color.  */
-	  [[NSColor colorWithUnsignedLong:face->background] set];
+	  ns_set_background_fill_color (s->f, face->background);
 	  r = NSMakeRect (s->x, s->y + box_line_width,
 			  s->background_width,
 			  s->height - 2 * box_line_width);
@@ -4147,9 +4270,10 @@ ns_maybe_dumpglyphs_background (struct glyph_string *s, char force_p)
 	       || force_p)
 	{
 	  if (s->hl != DRAW_CURSOR)
-	    [(NS_FACE_BACKGROUND (face) != 0
-	      ? [NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)]
-	      : FRAME_BACKGROUND_COLOR (s->f)) set];
+	    [ns_apply_alpha_background
+	       (s->f, (NS_FACE_BACKGROUND (face) != 0
+		       ? [NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)]
+		       : FRAME_BACKGROUND_COLOR (s->f))) set];
 	  else if (face && (NS_FACE_BACKGROUND (face)
 			    == [(NSColor *) FRAME_CURSOR_COLOR (s->f)
 					    unsignedLong]))
@@ -4289,7 +4413,7 @@ ns_dumpglyphs_image (struct glyph_string *s, NSRect r)
      otherwise, since we composite the image under NS (instead of mucking
      with its background color), we must clear just the image area.  */
 
-  [[NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)] set];
+  ns_set_background_fill_color (s->f, NS_FACE_BACKGROUND (face));
 
   if (bg_height > s->slice.height || s->img->hmargin || s->img->vmargin
       || s->img->mask || s->img->pixmap == 0 || s->width != s->background_width)
@@ -4452,10 +4576,10 @@ ns_draw_stretch_glyph_string (struct glyph_string *s)
 		face = FACE_FROM_ID (s->f, MOUSE_FACE_ID);
 	      prepare_face_for_display (s->f, face);
 
-	      [[NSColor colorWithUnsignedLong: face->background] set];
+	      ns_set_background_fill_color (s->f, face->background);
 	    }
 	  else
-	    [[NSColor colorWithUnsignedLong: s->face->background] set];
+	    ns_set_background_fill_color (s->f, s->face->background);
 	  NSRectFill (NSMakeRect (x, y, w, h));
 	}
     }
@@ -4489,7 +4613,7 @@ ns_draw_stretch_glyph_string (struct glyph_string *s)
 	      /* On cocoa emacs the stipple is stored as a mask CGImage.
 		 First we want to clear the background with the bg
 		 color.  */
-	      [[NSColor colorWithUnsignedLong:s->face->background] set];
+	      ns_set_background_fill_color (s->f, s->face->background);
 	      NSRectFill (NSMakeRect (x, s->y, background_width, s->height));
 
 	      /* This part could possibly be improved, the author is
@@ -4517,7 +4641,7 @@ ns_draw_stretch_glyph_string (struct glyph_string *s)
 #endif /* NS_IMPL_COCOA */
 	    }
 	  else
-	    [[NSColor colorWithUnsignedLong: s->face->background] set];
+	    ns_set_background_fill_color (s->f, s->face->background);
 
 	  NSRectFill (NSMakeRect (x, s->y, background_width, s->height));
 	}
@@ -9077,9 +9201,7 @@ static void cancel_ns_deferred_UAZoomChangeFocus_timer ()
         }
 
       [w setContentView:[fw contentView]];
-      [w setBackgroundColor: col];
-      if ([col alphaComponent] != (EmacsCGFloat) 1.0)
-        [w setOpaque: NO];
+      ns_set_window_background (f, w, col);
 
       f->border_width = [w borderWidth];
 
@@ -9817,9 +9939,7 @@ static void cancel_ns_deferred_UAZoomChangeFocus_timer ()
 
       col = [NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND
                                      (FACE_FROM_ID (f, DEFAULT_FACE_ID))];
-      [self setBackgroundColor:col];
-      if ([col alphaComponent] != (EmacsCGFloat) 1.0)
-        [self setOpaque:NO];
+      ns_set_window_background (f, self, col);
 
       /* toolbar support */
       [self createToolbar:f];

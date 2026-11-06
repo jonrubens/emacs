@@ -1181,9 +1181,10 @@ nsfont_draw (struct glyph_string *s, int from, int to, int x, int y,
       NSRect br = NSMakeRect (x, y - FONT_BASE (s->font),
 			      s->width, FONT_HEIGHT (s->font));
       if (s->hl != DRAW_CURSOR)
-	[(NS_FACE_BACKGROUND (face) != 0
-	  ? [NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)]
-	  : FRAME_BACKGROUND_COLOR (s->f)) set];
+	[ns_apply_alpha_background
+	   (s->f, (NS_FACE_BACKGROUND (face) != 0
+		   ? [NSColor colorWithUnsignedLong:NS_FACE_BACKGROUND (face)]
+		   : FRAME_BACKGROUND_COLOR (s->f))) set];
       else
 	[FRAME_CURSOR_COLOR (s->f) set];
       NSRectFill (br);

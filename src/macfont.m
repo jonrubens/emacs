@@ -642,6 +642,18 @@ get_cgcolor_from_nscolor (NSColor *nsColor, struct frame *f)
     CGContextSetFillColorWithColor (context, refcol);                   \
     CGColorRelease (refcol);                                            \
   } while (0)
+/* Like CG_SET_FILL_COLOR_WITH_FACE_BACKGROUND, but also apply the
+   frame's `alpha-background'.  */
+#define CG_SET_FILL_COLOR_WITH_FACE_BACKGROUND_ALPHA(context, frame, face) \
+  do {                                                                  \
+    CGColorRef refcol                                                   \
+      = get_cgcolor_from_nscolor                                        \
+          (ns_apply_alpha_background                                    \
+             (frame, [NSColor colorWithUnsignedLong:                    \
+                                NS_FACE_BACKGROUND (face)]), frame);    \
+    CGContextSetFillColorWithColor (context, refcol);                   \
+    CGColorRelease (refcol);                                            \
+  } while (0)
 #define CG_SET_FILL_COLOR_WITH_FRAME_CURSOR(context, frame)             \
   do {                                                                  \
     CGColorRef refcol                                                   \
@@ -2996,8 +3008,14 @@ macfont_draw (struct glyph_string *s, int from, int to, int x, int y,
             CG_SET_FILL_COLOR_WITH_FRAME_CURSOR (context, f);
         }
       else
-        CG_SET_FILL_COLOR_WITH_FACE_BACKGROUND (context, face);
+        CG_SET_FILL_COLOR_WITH_FACE_BACKGROUND_ALPHA (context, f, face);
+
+      /* Replace, rather than blend with, whatever is already there.
+         Blending a translucent background onto the previous contents
+         of the layer would make it more opaque on every redraw.  */
+      CGContextSetBlendMode (context, kCGBlendModeCopy);
       CGContextFillRects (context, &background_rect, 1);
+      CGContextSetBlendMode (context, kCGBlendModeNormal);
     }
 
   if (macfont_info->cgfont)

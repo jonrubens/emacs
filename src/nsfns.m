@@ -314,12 +314,7 @@ ns_set_background_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 
   if (view != nil)
     {
-      [[view window] setBackgroundColor: col];
-
-      if (alpha != (EmacsCGFloat) 1.0)
-          [[view window] setOpaque: NO];
-      else
-          [[view window] setOpaque: YES];
+      ns_set_window_background (f, [view window], col);
 
       face = FRAME_DEFAULT_FACE (f);
       if (face)
@@ -340,6 +335,25 @@ ns_set_background_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
   unblock_input ();
 }
 
+
+static void
+ns_set_alpha_background (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
+{
+  NSView *view = FRAME_NS_VIEW (f);
+
+  /* This also recomputes the basic faces and garbages the frame, so
+     that everything is redrawn with the new transparency.  */
+  gui_set_alpha_background (f, arg, oldval);
+
+  if (view != nil && [view window] != nil
+      && f->output_data.ns->background_color != nil)
+    {
+      block_input ();
+      ns_set_window_background (f, [view window],
+                                f->output_data.ns->background_color);
+      unblock_input ();
+    }
+}
 
 static void
 ns_set_cursor_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
@@ -1105,7 +1119,7 @@ frame_parm_handler ns_frame_parm_handlers[] =
   ns_set_z_group,
   0, /* x_set_override_redirect */
   gui_set_no_special_glyphs,
-  gui_set_alpha_background,
+  ns_set_alpha_background,
   gui_set_borders_respect_alpha_background,
   NULL,
 #ifdef NS_IMPL_COCOA
@@ -1268,6 +1282,9 @@ DEFUN ("x-create-frame", Fx_create_frame, Sx_create_frame,
 
   f->output_method = output_ns;
   f->output_data.ns = xzalloc (sizeof *f->output_data.ns);
+  /* Frames start out fully opaque; `alpha-background' is applied later
+     by ns_set_alpha_background.  */
+  f->alpha_background = 1.0;
 
   FRAME_FONTSET (f) = -1;
 
@@ -2989,6 +3006,9 @@ ns_create_tip_frame (struct ns_display_info *dpyinfo, Lisp_Object parms)
 
   f->output_method = output_ns;
   f->output_data.ns = xzalloc (sizeof *f->output_data.ns);
+  /* Frames start out fully opaque; `alpha-background' is applied later
+     by ns_set_alpha_background.  */
+  f->alpha_background = 1.0;
   f->tooltip = true;
 
   FRAME_FONTSET (f) = -1;
