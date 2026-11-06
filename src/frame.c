@@ -4883,6 +4883,7 @@ static const struct frame_parm_table frame_parms[] =
 #ifdef NS_IMPL_COCOA
   {"ns-appearance",		SYMBOL_INDEX (Qns_appearance)},
   {"ns-transparent-titlebar",	SYMBOL_INDEX (Qns_transparent_titlebar)},
+  {"ns-background-blur",	SYMBOL_INDEX (Qns_background_blur)},
 #endif
 };
 
@@ -7318,6 +7319,7 @@ syms_of_frame (void)
 #ifdef NS_IMPL_COCOA
   DEFSYM (Qns_appearance, "ns-appearance");
   DEFSYM (Qns_transparent_titlebar, "ns-transparent-titlebar");
+  DEFSYM (Qns_background_blur, "ns-background-blur");
 #endif
 
   DEFSYM (Qalpha, "alpha");

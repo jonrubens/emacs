@@ -30,6 +30,7 @@ GNUstep port and post-20 update by Adrian Robert (arobert@cogsci.ucsd.edu)
    interpretation of even the system includes.  */
 #include <config.h>
 
+#include <dlfcn.h>
 #include <fcntl.h>
 #include <math.h>
 #include <pthread.h>
@@ -287,6 +288,58 @@ ns_set_titlebar_tint (struct frame *f, NSWindow *window, NSColor *col)
 }
 #endif
 
+#ifdef NS_IMPL_COCOA
+/* Blur behind the window (the `ns-background-blur' frame parameter).
+
+   macOS has no public API for this, so use the same WindowServer call
+   that other terminal emulators use.  The two functions are looked up
+   at run time, so if a future system drops them the parameter simply
+   has no effect instead of Emacs failing to start.
+
+   The blur is only requested for a window that is on screen and has a
+   valid window number: the window server forgets it when the window
+   is hidden, so this is called again whenever the frame is made
+   visible.  It only has a visible effect when the window is
+   translucent, e.g. with `alpha-background'.  */
+void
+ns_apply_background_blur (struct frame *f)
+{
+  typedef int cgs_connection_t;
+  typedef cgs_connection_t (*cgs_connection_fn) (void);
+  typedef CGError (*cgs_blur_fn) (cgs_connection_t, NSInteger, int);
+  static cgs_connection_fn get_connection;
+  static cgs_blur_fn set_blur;
+  static bool resolved;
+
+  EmacsView *view = (EmacsView *) FRAME_NS_VIEW (f);
+  NSWindow *window = [view window];
+  struct ns_output *out = f->output_data.ns;
+  int radius = out->background_blur;
+
+  if (!resolved)
+    {
+      resolved = true;
+      get_connection
+        = (cgs_connection_fn) dlsym (RTLD_DEFAULT,
+                                     "CGSDefaultConnectionForThread");
+      set_blur
+        = (cgs_blur_fn) dlsym (RTLD_DEFAULT,
+                               "CGSSetWindowBackgroundBlurRadius");
+    }
+
+  if (!get_connection || !set_blur
+      || window == nil || ![window isVisible] || [window windowNumber] <= 0)
+    return;
+
+  /* Nothing to do if there is no blur and none has been applied.  */
+  if (radius == 0 && !out->background_blur_applied)
+    return;
+
+  set_blur (get_connection (), [window windowNumber], radius);
+  out->background_blur_applied = radius > 0;
+}
+#endif /* NS_IMPL_COCOA */
+
 /* Configure WINDOW, which belongs to F, so that its translucency matches
    COL (the frame's background color) and F's `alpha-background'.
 
@@ -310,6 +363,12 @@ ns_set_window_background (struct frame *f, NSWindow *window, NSColor *col)
 
 #if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
   ns_set_titlebar_tint (f, window, col);
+#endif
+#ifdef NS_IMPL_COCOA
+  /* A window that replaced the frame's previous one (e.g. when leaving
+     non-native fullscreen) needs the blur requested again.  */
+  if (window == [FRAME_NS_VIEW (f) window])
+    ns_apply_background_blur (f);
 #endif
 }
 
@@ -1746,6 +1805,9 @@ ns_make_frame_visible (struct frame *f)
 
       SET_FRAME_VISIBLE (f, true);
       ns_raise_frame (f, ! FRAME_NO_FOCUS_ON_MAP (f));
+#ifdef NS_IMPL_COCOA
+      ns_apply_background_blur (f);
+#endif
 
       /* Making a new frame from a fullscreen frame will make the new frame
          fullscreen also.  So skip handleFS as this will print an error.  */

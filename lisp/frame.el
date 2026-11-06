@@ -84,7 +84,7 @@ handles the corresponding kind of display.")
     "min-width" "minibuffer" "minibuffer-exit" "mouse-color"
     "mouse-wheel-frame" "name" "no-accept-focus" "no-focus-on-map"
     "no-other-frame" "no-special-glyphs" "ns-appearance"
-    "ns-transparent-titlebar" "outer-window-id" "override-redirect"
+    "ns-background-blur" "ns-transparent-titlebar" "outer-window-id" "override-redirect"
     "parent-frame" "right-fringe" "right-divider-width" "screen-gamma"
     "scroll-bar-background" "scroll-bar-foreground" "scroll-bar-height"
     "scroll-bar-width" "shaded" "skip-taskbar" "snap-width" "sticky"

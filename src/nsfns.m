@@ -355,6 +355,27 @@ ns_set_alpha_background (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
     }
 }
 
+#ifdef NS_IMPL_COCOA
+static void
+ns_set_background_blur (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
+{
+  int radius;
+
+  if (NILP (arg))
+    radius = 0;
+  else if (FIXNUMP (arg))
+    radius = clip_to_bounds (0, XFIXNUM (arg), 100);
+  else
+    wrong_type_argument (Qintegerp, arg);
+
+  f->output_data.ns->background_blur = radius;
+
+  block_input ();
+  ns_apply_background_blur (f);
+  unblock_input ();
+}
+#endif /* NS_IMPL_COCOA */
+
 static void
 ns_set_cursor_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
@@ -1125,6 +1146,7 @@ frame_parm_handler ns_frame_parm_handlers[] =
 #ifdef NS_IMPL_COCOA
   ns_set_appearance,
   ns_set_transparent_titlebar,
+  ns_set_background_blur,
 #endif
 };
 
@@ -1550,6 +1572,10 @@ DEFUN ("x-create-frame", Fx_create_frame, Sx_create_frame,
                          RES_TYPE_NUMBER);
   gui_default_parameter (f, parms, Qalpha, Qnil,
                          "alpha", "Alpha", RES_TYPE_NUMBER);
+#ifdef NS_IMPL_COCOA
+  gui_default_parameter (f, parms, Qns_background_blur, Qnil,
+                         "backgroundBlur", "BackgroundBlur", RES_TYPE_NUMBER);
+#endif
   gui_default_parameter (f, parms, Qalpha_background, Qnil,
                          "alphaBackground", "AlphaBackground", RES_TYPE_NUMBER);
   gui_default_parameter (f, parms, Qborders_respect_alpha_background, Qnil,

@@ -1001,6 +1001,12 @@ struct ns_output
      background color for `alpha-background'.  */
   bool titlebar_tinted;
 
+  /* Radius of the blur behind the window, from `ns-background-blur'
+     (0 means none), and whether a blur has been applied to the
+     window server's copy of the window.  */
+  int background_blur;
+  bool background_blur_applied;
+
   /* The height of the toolbar if displayed, else 0.  */
   int toolbar_height;
 
@@ -1231,6 +1237,9 @@ extern NSColor *ns_apply_alpha_background (struct frame *, NSColor *);
 extern void ns_set_window_background (struct frame *, NSWindow *, NSColor *);
 #endif
 extern void ns_set_background_fill_color (struct frame *, unsigned long);
+#ifdef NS_IMPL_COCOA
+extern void ns_apply_background_blur (struct frame *);
+#endif
 extern void ns_make_frame_visible (struct frame *f);
 extern void ns_make_frame_invisible (struct frame *f);
 extern void ns_iconify_frame (struct frame *f);

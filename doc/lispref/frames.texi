@@ -2504,6 +2504,16 @@ The ``vibrant dark'' theme can be used to set the toolbar and
 scrollbars to a dark appearance when using an Emacs theme with a dark
 background.
 
+@vindex ns-background-blur@r{, a frame parameter}
+@item ns-background-blur
+Only available on macOS, this is a non-negative integer (at most 100)
+specifying the radius of a blur applied to whatever is behind this
+frame's window, or @code{nil} or 0 for no blur.  It is only noticeable
+if the window is translucent, for instance when @code{alpha-background}
+is less than 1.  It relies on a WindowServer facility that is not
+documented by Apple, so it may stop working on future versions of the
+system.
+
 @vindex ns-transparent-titlebar@r{, a frame parameter}
 @item ns-transparent-titlebar
 Only available on macOS, if non-@code{nil}, set the titlebar and
